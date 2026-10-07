@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Xml;
 
 namespace WSAppBak
@@ -30,6 +31,9 @@ namespace WSAppBak
 		private string WSAppProcessorArchitecture;
 
 		private string WSAppPublisher;
+
+		// 生成的签名证书 PFX 固定使用此密码（仅用于内部签名，用户无需关心）
+		private string PfxPassword = "wsappbak";
 
 		public void Run()
 		{
@@ -61,6 +65,43 @@ namespace WSAppBak
 				}
 			}
 			return result;
+		}
+
+		// 运行一段 PowerShell 脚本（以 EncodedCommand 传入，彻底避免引号转义问题），成功返回 true
+		private bool RunPowerShell(string script)
+		{
+			string encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
+			Process process = new Process
+			{
+				StartInfo = new ProcessStartInfo
+				{
+					FileName = "powershell.exe",
+					Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand " + encoded,
+					UseShellExecute = false,
+					RedirectStandardOutput = true,
+					RedirectStandardError = true,
+					CreateNoWindow = true
+				}
+			};
+			process.Start();
+			string stdout = process.StandardOutput.ReadToEnd();
+			string stderr = process.StandardError.ReadToEnd();
+			process.WaitForExit();
+			if (stdout.Length > 0)
+			{
+				Console.Write(stdout);
+			}
+			if (stderr.Length > 0)
+			{
+				Console.WriteLine(stderr);
+			}
+			return process.ExitCode == 0;
+		}
+
+		// 把字符串包装成 PowerShell 单引号字符串
+		private string PSQuote(string s)
+		{
+			return "'" + (s ?? "").Replace("'", "''") + "'";
 		}
 
 		private void ReadArg()
@@ -166,7 +207,7 @@ namespace WSAppBak
 					Console.WriteLine("程序包“{0}”创建成功。", WSAppFileName + ".appx");
 					while (Checking)
 					{
-						MakeCert();
+						CreateCertificate();
 					}
 				}
 				else
@@ -188,77 +229,46 @@ namespace WSAppBak
 			}
 		}
 
-		private void MakeCert()
+		// 使用 Windows 自带的 PowerShell 生成代码签名证书，直接导出 .cer 与 .pfx；
+		// 不再调用会弹出英文“Create Private Key Password”窗口的 MakeCert.exe / Pvk2Pfx.exe
+		private void CreateCertificate()
 		{
-			string text = AppCurrentDirctory + "\\WSAppBak\\MakeCert.exe";
-			string args = "-n \"" + WSAppPublisher + "\" -r -a sha256 -len 2048 -cy end -h 0 -eku 1.3.6.1.5.5.7.3.3 -b 01/01/2000 -sv \"" + WSAppOutputPath + "\\" + WSAppFileName + ".pvk\" \"" + WSAppOutputPath + "\\" + WSAppFileName + ".cer\"";
-			if (File.Exists(text))
+			string cerPath = WSAppOutputPath + "\\" + WSAppFileName + ".cer";
+			string pfxPath = WSAppOutputPath + "\\" + WSAppFileName + ".pfx";
+			if (File.Exists(cerPath))
 			{
-				if (File.Exists(WSAppOutputPath + "\\" + WSAppFileName + ".pvk"))
-				{
-					File.Delete(WSAppOutputPath + "\\" + WSAppFileName + ".pvk");
-				}
-				if (File.Exists(WSAppOutputPath + "\\" + WSAppFileName + ".cer"))
-				{
-					File.Delete(WSAppOutputPath + "\\" + WSAppFileName + ".cer");
-				}
-				Console.WriteLine("\n请稍候……正在为程序包创建证书。\n");
-				Console.Write("证书创建：");
-				if (RunProcess(text, args).ToLower().Contains("succeeded"))
-				{
-					while (Checking)
-					{
-						Pvk2Pfx();
-					}
-				}
-				else
-				{
-					Checking = false;
-					Console.WriteLine("\n无法为程序包创建证书……按任意键退出。");
-					Console.ReadKey();
-				}
+				File.Delete(cerPath);
 			}
-			else
+			if (File.Exists(pfxPath))
 			{
-				Checking = false;
-				Console.WriteLine("\n无法为程序包创建证书，未找到“MakeCert.exe”！");
-				Console.Write("按任意键退出……");
-				Console.ReadKey();
+				File.Delete(pfxPath);
 			}
-		}
 
-		private void Pvk2Pfx()
-		{
-			string text = AppCurrentDirctory + "\\WSAppBak\\Pvk2Pfx.exe";
-			string args = "-pvk \"" + WSAppOutputPath + "\\" + WSAppFileName + ".pvk\" -spc \"" + WSAppOutputPath + "\\" + WSAppFileName + ".cer\" -pfx \"" + WSAppOutputPath + "\\" + WSAppFileName + ".pfx\"";
-			if (File.Exists(text))
+			Console.WriteLine("\n请稍候……正在为程序包创建证书。\n");
+			Console.Write("证书创建：");
+
+			string script =
+				"$ErrorActionPreference='Stop';" +
+				"$c = New-SelfSignedCertificate -Type CodeSigningCert -Subject " + PSQuote(WSAppPublisher) +
+				" -KeyAlgorithm RSA -KeyLength 2048 -HashAlgorithm SHA256" +
+				" -NotAfter (Get-Date).AddYears(10) -CertStoreLocation Cert:\\CurrentUser\\My;" +
+				"Export-Certificate -Cert $c -FilePath " + PSQuote(cerPath) + " | Out-Null;" +
+				"$pw = ConvertTo-SecureString -String " + PSQuote(PfxPassword) + " -Force -AsPlainText;" +
+				"Export-PfxCertificate -Cert $c -FilePath " + PSQuote(pfxPath) + " -Password $pw | Out-Null;" +
+				"Remove-Item ('Cert:\\CurrentUser\\My\\' + $c.Thumbprint) -Force;";
+
+			if (RunPowerShell(script))
 			{
-				if (File.Exists(WSAppOutputPath + "\\" + WSAppFileName + ".pfx"))
+				Console.Write("成功");
+				while (Checking)
 				{
-					File.Delete(WSAppOutputPath + "\\" + WSAppFileName + ".pfx");
-				}
-				Console.WriteLine("\n请稍候……正在转换证书以对程序包进行签名。\n");
-				Console.Write("证书转换：");
-				if (RunProcess(text, args).Length == 0)
-				{
-					Console.Write("成功");
-					while (Checking)
-					{
-						SignApp();
-					}
-				}
-				else
-				{
-					Checking = false;
-					Console.WriteLine("\n无法转换证书以对程序包进行签名……按任意键退出……");
-					Console.ReadKey();
+					SignApp();
 				}
 			}
 			else
 			{
 				Checking = false;
-				Console.WriteLine("\n无法转换证书以对程序包进行签名，未找到“Pvk2Pfx.exe”！");
-				Console.Write("按任意键退出……");
+				Console.WriteLine("\n无法为程序包创建证书……按任意键退出。");
 				Console.ReadKey();
 			}
 		}
@@ -266,7 +276,7 @@ namespace WSAppBak
 		private void SignApp()
 		{
 			string text = AppCurrentDirctory + "\\WSAppBak\\SignTool.exe";
-			string args = "sign -fd SHA256 -a -f \"" + WSAppOutputPath + "\\" + WSAppFileName + ".pfx\" \"" + WSAppOutputPath + "\\" + WSAppFileName + ".appx\"";
+			string args = "sign -fd SHA256 -f \"" + WSAppOutputPath + "\\" + WSAppFileName + ".pfx\" -p " + PfxPassword + " \"" + WSAppOutputPath + "\\" + WSAppFileName + ".appx\"";
 			if (File.Exists(text))
 			{
 				Console.WriteLine("\n\n请稍候……正在对程序包进行签名，这可能需要几分钟。\n");
