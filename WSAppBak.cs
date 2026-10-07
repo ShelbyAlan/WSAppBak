@@ -7,7 +7,7 @@ namespace WSAppBak
 {
 	internal class WSAppBak
 	{
-		private string AppName = "Windows Store App Backup";
+		private string AppName = "Windows 应用商店应用备份";
 
 		private string AppCreator = "Kiran Murmu";
 
@@ -68,9 +68,9 @@ namespace WSAppBak
 			while (Checking)
 			{
 				Console.Clear();
-				Console.WriteLine("\t\t'{0}' by {1}", AppName, AppCreator);
+				Console.WriteLine("\t\t“{0}”  作者：{1}", AppName, AppCreator);
 				Console.WriteLine("================================================================================");
-				Console.Write("Enter the App path: ");
+				Console.Write("请输入应用路径：");
 				WSAppPath = Convert.ToString(Console.ReadLine());
 				if (WSAppPath.Contains("\""))
 				{
@@ -81,7 +81,7 @@ namespace WSAppBak
 				{
 					while (Checking)
 					{
-						Console.Write("\nEnter the Output path: ");
+						Console.Write("\n请输入输出路径：");
 						WSAppOutputPath = Convert.ToString(Console.ReadLine());
 						if (WSAppOutputPath.Contains("\""))
 						{
@@ -128,11 +128,11 @@ namespace WSAppBak
 						else
 						{
 							Checking = true;
-							Console.WriteLine("\nInvailed Output Path, '{0}' Directory not found!", WSAppOutputPath);
-							Console.Write("Press any Key to retry...");
+							Console.WriteLine("\n无效的输出路径，目录“{0}”不存在！", WSAppOutputPath);
+							Console.Write("按任意键重试……");
 							Console.ReadKey();
 							Console.Clear();
-							Console.WriteLine("\t\t'{0}' by {1}", AppName, AppCreator);
+							Console.WriteLine("\t\t“{0}”  作者：{1}", AppName, AppCreator);
 							Console.Write("================================================================================");
 						}
 					}
@@ -140,8 +140,8 @@ namespace WSAppBak
 				else
 				{
 					Checking = true;
-					Console.WriteLine("\nInvailed App Path, '{0}' file not found!", WSAppXmlFile);
-					Console.Write("Press any Key to retry...");
+					Console.WriteLine("\n无效的应用路径，未找到“{0}”文件！", WSAppXmlFile);
+					Console.Write("按任意键重试……");
 					Console.ReadKey();
 				}
 			}
@@ -157,13 +157,13 @@ namespace WSAppBak
 				{
 					File.Delete(WSAppOutputPath + "\\" + WSAppFileName + ".appx");
 				}
-				Console.WriteLine("\nPlease wait.. Creating '.appx' package file.\n");
+				Console.WriteLine("\n请稍候……正在创建“.appx”程序包文件。\n");
 				if (RunProcess(text, args).ToLower().Contains("succeeded"))
 				{
 					Console.Clear();
-					Console.WriteLine("\t\t'{0}' by {1}", AppName, AppCreator);
+					Console.WriteLine("\t\t“{0}”  作者：{1}", AppName, AppCreator);
 					Console.WriteLine("================================================================================");
-					Console.WriteLine("Package '{0}' creation succeeded.", WSAppFileName + ".appx");
+					Console.WriteLine("程序包“{0}”创建成功。", WSAppFileName + ".appx");
 					while (Checking)
 					{
 						MakeCert();
@@ -173,17 +173,17 @@ namespace WSAppBak
 				{
 					Checking = false;
 					Console.Clear();
-					Console.WriteLine("\t\t'{0}' by {1}", AppName, AppCreator);
+					Console.WriteLine("\t\t“{0}”  作者：{1}", AppName, AppCreator);
 					Console.WriteLine("================================================================================");
-					Console.Write("Package '{0}' creation failed... press any Key to exit.", WSAppFileName + ".appx");
+					Console.Write("程序包“{0}”创建失败……按任意键退出。", WSAppFileName + ".appx");
 					Console.ReadKey();
 				}
 			}
 			else
 			{
 				Checking = false;
-				Console.WriteLine("\nCan't create '.appx' file, 'MakeAppx.exe' file not found!");
-				Console.Write("Press any Key to exit...");
+				Console.WriteLine("\n无法创建“.appx”文件，未找到“MakeAppx.exe”！");
+				Console.Write("按任意键退出……");
 				Console.ReadKey();
 			}
 		}
@@ -202,8 +202,8 @@ namespace WSAppBak
 				{
 					File.Delete(WSAppOutputPath + "\\" + WSAppFileName + ".cer");
 				}
-				Console.WriteLine("\nPlease wait.. Creating certificate for the package.\n");
-				Console.Write("Certificate creation: ");
+				Console.WriteLine("\n请稍候……正在为程序包创建证书。\n");
+				Console.Write("证书创建：");
 				if (RunProcess(text, args).ToLower().Contains("succeeded"))
 				{
 					while (Checking)
@@ -214,15 +214,15 @@ namespace WSAppBak
 				else
 				{
 					Checking = false;
-					Console.WriteLine("\nFailed to create Certificate for the package... Prees any Key exit.");
+					Console.WriteLine("\n无法为程序包创建证书……按任意键退出。");
 					Console.ReadKey();
 				}
 			}
 			else
 			{
 				Checking = false;
-				Console.WriteLine("\nCan't create Certificate for the package, 'MakeCert.exe' file not found!");
-				Console.Write("Press any Key to exit...");
+				Console.WriteLine("\n无法为程序包创建证书，未找到“MakeCert.exe”！");
+				Console.Write("按任意键退出……");
 				Console.ReadKey();
 			}
 		}
@@ -237,11 +237,11 @@ namespace WSAppBak
 				{
 					File.Delete(WSAppOutputPath + "\\" + WSAppFileName + ".pfx");
 				}
-				Console.WriteLine("\nPlease wait.. Converting certificate to sign the package.\n");
-				Console.Write("Certificate convertion: ");
+				Console.WriteLine("\n请稍候……正在转换证书以对程序包进行签名。\n");
+				Console.Write("证书转换：");
 				if (RunProcess(text, args).Length == 0)
 				{
-					Console.Write("succeeded");
+					Console.Write("成功");
 					while (Checking)
 					{
 						SignApp();
@@ -250,15 +250,15 @@ namespace WSAppBak
 				else
 				{
 					Checking = false;
-					Console.WriteLine("\nCan't convert certificate to sign the package... Prees any Key exit...");
+					Console.WriteLine("\n无法转换证书以对程序包进行签名……按任意键退出……");
 					Console.ReadKey();
 				}
 			}
 			else
 			{
 				Checking = false;
-				Console.WriteLine("\nCan't convert Certificate to sign the package, 'Pvk2Pfx.exe' file not found!");
-				Console.Write("Press any Key to exit...");
+				Console.WriteLine("\n无法转换证书以对程序包进行签名，未找到“Pvk2Pfx.exe”！");
+				Console.Write("按任意键退出……");
 				Console.ReadKey();
 			}
 		}
@@ -269,26 +269,26 @@ namespace WSAppBak
 			string args = "sign -fd SHA256 -a -f \"" + WSAppOutputPath + "\\" + WSAppFileName + ".pfx\" \"" + WSAppOutputPath + "\\" + WSAppFileName + ".appx\"";
 			if (File.Exists(text))
 			{
-				Console.WriteLine("\n\nPlease wait.. Signing the package, this may take some minutes.\n");
+				Console.WriteLine("\n\n请稍候……正在对程序包进行签名，这可能需要几分钟。\n");
 				if (RunProcess(text, args).ToLower().Contains("successfully signed"))
 				{
 					Checking = false;
-					Console.WriteLine("Package signing succeeded. Please install the '.cer' file to [Local Computer\\Trusted Root Certification Authorities] before install the App Package or use 'WSAppPkgIns.exe' file to install the App Package!");
-					Console.Write("\nPress any Key to exit..... :)");
+					Console.WriteLine("程序包签名成功。安装应用程序包之前，请先将“.cer”文件安装到 [本地计算机\\受信任的根证书颁发机构]；或者使用“WSAppPkgIns.exe”来安装应用程序包！");
+					Console.Write("\n按任意键退出……  :)");
 					Console.ReadKey();
 				}
 				else
 				{
 					Checking = false;
-					Console.WriteLine("\nCan't Sign the package, Press any Key to exit...");
+					Console.WriteLine("\n无法对程序包进行签名，按任意键退出……");
 					Console.ReadKey();
 				}
 			}
 			else
 			{
 				Checking = false;
-				Console.WriteLine("\nCan't Sign the package, 'SignTool.exe' file not found!");
-				Console.Write("Press any Key to exit...");
+				Console.WriteLine("\n无法对程序包进行签名，未找到“SignTool.exe”！");
+				Console.Write("按任意键退出……");
 				Console.ReadKey();
 			}
 		}
