@@ -1,0 +1,43 @@
+name: Build WSAppBak
+
+# 在推送到 master、提交 PR 或手动触发时，使用 Windows 运行器编译
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: 编译 Release（Windows）
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: 编译解决方案（Release）
+        # CodePage=65001 与工程文件中的设置一致，确保含中文的 UTF-8 源码被正确编译
+        run: msbuild WSAppBak.sln /p:Configuration=Release /p:Platform="Any CPU" /p:CodePage=65001 /v:minimal /nologo
+
+      - name: 汇总可直接运行的产物
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifact | Out-Null
+          Copy-Item -Force "bin/Release/WSAppBak.exe" artifact/
+          if (Test-Path "bin/Release/WSAppBak.pdb") {
+            Copy-Item -Force "bin/Release/WSAppBak.pdb" artifact/
+          }
+          # 打包/签名所需的 SDK 工具（makeappx、makecert、pvk2pfx、signtool 等）
+          Copy-Item -Recurse -Force "bin/Release/WSAppBak" artifact/
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: WSAppBak-Release
+          path: artifact
+          if-no-files-found: error
