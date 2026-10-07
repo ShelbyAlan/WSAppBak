@@ -1,0 +1,58 @@
+name: Publish Release
+
+# 推送 v* 标签时，自动编译并发布 GitHub Release（含可直接运行的 zip）
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+# 发布 Release 需要对仓库内容的写入权限
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: 构建并发布 Release
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: 编译解决方案（Release）
+        run: msbuild WSAppBak.sln /p:Configuration=Release /p:Platform="Any CPU" /p:CodePage=65001 /v:minimal /nologo
+
+      - name: 打包可直接运行的文件
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package/WSAppBak | Out-Null
+          Copy-Item -Force "bin/Release/WSAppBak.exe" package/WSAppBak/
+          if (Test-Path "bin/Release/WSAppBak.pdb") {
+            Copy-Item -Force "bin/Release/WSAppBak.pdb" package/WSAppBak/
+          }
+          # 打包/签名所需的 SDK 工具（makeappx、signtool 等）
+          Copy-Item -Recurse -Force "bin/Release/WSAppBak" package/WSAppBak/
+          Compress-Archive -Path package/WSAppBak -DestinationPath "WSAppBak-${{ github.ref_name }}.zip" -Force
+
+      - name: 发布 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: WSAppBak ${{ github.ref_name }}（中文界面版）
+          files: WSAppBak-${{ github.ref_name }}.zip
+          body: |
+            ## WSAppBak — Windows 应用商店应用备份 / 重打包工具
+
+            全中文界面版本。
+
+            ### 使用方法
+            1. 下载并解压 `WSAppBak-${{ github.ref_name }}.zip`
+            2. 进入解压后的 **WSAppBak** 文件夹，在地址栏输入 `cmd` 后回车
+            3. 在命令行窗口输入 `WSAppBak` 回车，按中文提示操作即可
+
+            ### 说明
+            - 证书通过 Windows 自带的 PowerShell 生成，**无英文弹窗**
+            - 签名成功后，请按提示将 `.cer` 文件安装到「本地计算机\受信任的根证书颁发机构」
